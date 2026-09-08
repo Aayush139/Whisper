@@ -1,18 +1,19 @@
+import 'dotenv/config';
 import mongoose from 'mongoose';
 
 const Connection = async () => {
-    const URL = 'mongodb://127.0.0.1:27017/whisper';
-
     try {
-        await mongoose.connect(URL, {
-            useUnifiedTopology: true,
-            useNewUrlParser: true,
-            useFindAndModify: false
-        });
+        console.log('MONGO_URI exists:', !!process.env.MONGO_URI);
+        console.log(
+            'MONGO_URI starts with mongodb+srv:',
+            process.env.MONGO_URI?.startsWith('mongodb+srv://')
+        );
 
-        console.log('Database Connected Successfully');
+        await mongoose.connect(process.env.MONGO_URI);
+
+        console.log('MongoDB Atlas Connected Successfully');
     } catch (error) {
-        console.log('Error: ', error.message);
+        console.log('Database Error:', error.message);
     }
 };
 
