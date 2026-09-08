@@ -1,37 +1,81 @@
-import grid from 'gridfs-stream';
 import mongoose from 'mongoose';
 
-const url = 'http://localhost:8000';
+const bucketName = 'photos';
 
+export const uploadImage = async (request, response) => {
+    try {
+        if (!request.file) {
+            return response.status(404).json('File not found');
+        }
 
-let gfs, gridfsBucket;
-const conn = mongoose.connection;
-conn.once('open', () => {
-    gridfsBucket = new mongoose.mongo.GridFSBucket(conn.db, {
-        bucketName: 'fs'
-    });
-    gfs = grid(conn.db, mongoose.mongo);
-    gfs.collection('fs');
-});
+        const bucket = new mongoose.mongo.GridFSBucket(
+            mongoose.connection.db,
+            {
+                bucketName
+            }
+        );
 
+        const filename = `${Date.now()}-whisper-${request.file.originalname}`;
 
-export const uploadImage = (request, response) => {
-    if(!request.file) 
-        return response.status(404).json("File not found");
-    
-    const imageUrl = `${url}/file/${request.file.filename}`;
+        const uploadStream = bucket.openUploadStream(filename, {
+            contentType: request.file.mimetype
+        });
 
-    response.status(200).json(imageUrl);    
-}
+        uploadStream.end(request.file.buffer);
+
+        uploadStream.on('finish', () => {
+            const imageUrl =
+                `https://whisper-server-kqvy.onrender.com/file/${filename}`;
+            response.status(200).json(imageUrl);
+        });
+
+        uploadStream.on('error', (error) => {
+            response.status(500).json({
+                msg: error.message
+            });
+        });
+
+    } catch (error) {
+        response.status(500).json({
+            msg: error.message
+        });
+    }
+};
 
 export const getImage = async (request, response) => {
-    try {   
-        const file = await gfs.files.findOne({ filename: request.params.filename });
-        // const readStream = gfs.createReadStream(file.filename);
-        // readStream.pipe(response);
-        const readStream = gridfsBucket.openDownloadStream(file._id);
+    try {
+        const bucket = new mongoose.mongo.GridFSBucket(
+            mongoose.connection.db,
+            {
+                bucketName
+            }
+        );
+
+        const files = await bucket.find({
+            filename: request.params.filename
+        }).toArray();
+
+        if (!files.length) {
+            return response.status(404).json('File not found');
+        }
+
+        const file = files[0];
+
+        response.set('Content-Type', file.contentType || 'application/octet-stream');
+
+        const readStream = bucket.openDownloadStream(file._id);
+
+        readStream.on('error', (error) => {
+            response.status(500).json({
+                msg: error.message
+            });
+        });
+
         readStream.pipe(response);
+
     } catch (error) {
-        response.status(500).json({ msg: error.message });
+        response.status(500).json({
+            msg: error.message
+        });
     }
-}
+};
