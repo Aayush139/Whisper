@@ -1,22 +1,28 @@
 import { useState } from 'react';
 
-import { Box } from '@mui/material';
+import { Box, styled } from '@mui/material';
 
-//components
 import Header from './Header';
 import Search from './Search';
 import Conversations from './Conversations';
 
+const Component = styled(Box)`
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+`;
+
 const Menu = () => {
     const [text, setText] = useState('');
-    
+
     return (
-        <Box>
-            <Header/>
+        <Component>
+            <Header />
             <Search setText={setText} />
             <Conversations text={text} />
-        </Box>
-    )
-}
+        </Component>
+    );
+};
 
 export default Menu;

@@ -8,13 +8,12 @@ import { AccountContext } from '../../../context/AccountProvider';
 import Message from './Message';
 import Footer from './Footer';
 
-
 const Wrapper = styled(Box)`
-    height: 100%;
+    flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
-    min-height: 0;
-    background: #080808;;
+    background: #080808;
 `;
 
 const Component = styled(Box)`
@@ -22,15 +21,22 @@ const Component = styled(Box)`
     min-height: 0;
     overflow-y: auto;
     background: #080808;
+
+    &::-webkit-scrollbar {
+        width: 5px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: #5b252c;
+        border-radius: 10px;
+    }
 `;
 
 const Container = styled(Box)`
     padding: 1px 80px;
 `;
 
-
 const Messages = ({ person, conversation }) => {
-
     const [messages, setMessages] = useState([]);
     const [incomingMessage, setIncomingMessage] = useState(null);
     const [value, setValue] = useState('');
@@ -46,7 +52,6 @@ const Messages = ({ person, conversation }) => {
         setNewMessageFlag
     } = useContext(AccountContext);
 
-
     useEffect(() => {
         socket.current.on('getMessage', data => {
             setIncomingMessage({
@@ -54,8 +59,11 @@ const Messages = ({ person, conversation }) => {
                 createdAt: Date.now()
             });
         });
-    }, []);
 
+        return () => {
+            socket.current.off('getMessage');
+        };
+    }, []);
 
     useEffect(() => {
         const loadMessages = async () => {
@@ -66,11 +74,11 @@ const Messages = ({ person, conversation }) => {
         loadMessages();
     }, [conversation?._id, person._id, newMessageFlag]);
 
-
     useEffect(() => {
-        scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+        scrollRef.current?.scrollIntoView({
+            behavior: 'smooth'
+        });
     }, [messages]);
-
 
     useEffect(() => {
         if (
@@ -81,9 +89,7 @@ const Messages = ({ person, conversation }) => {
         }
     }, [incomingMessage, conversation]);
 
-
     const sendText = async (e) => {
-
         if ((e.keyCode || e.which) !== 13 || !value) return;
 
         const receiverId = conversation?.members?.find(
@@ -99,6 +105,7 @@ const Messages = ({ person, conversation }) => {
         };
 
         socket.current.emit('sendMessage', message);
+
         await newMessages(message);
 
         setValue('');
@@ -107,15 +114,13 @@ const Messages = ({ person, conversation }) => {
         setNewMessageFlag(prev => !prev);
     };
 
-
     return (
         <Wrapper>
-
             <Component>
                 {messages.map((message, index) => (
                     <Container
                         key={message._id || index}
-                        ref={scrollRef}
+                        ref={index === messages.length - 1 ? scrollRef : null}
                     >
                         <Message message={message} />
                     </Container>
@@ -130,10 +135,8 @@ const Messages = ({ person, conversation }) => {
                 file={file}
                 setImage={setImage}
             />
-
         </Wrapper>
     );
 };
-
 
 export default Messages;

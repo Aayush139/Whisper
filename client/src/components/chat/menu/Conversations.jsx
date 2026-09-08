@@ -10,9 +10,10 @@ import { getUsers } from '../../../service/api';
 
 
 const Component = styled(Box)`
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
     background: #0d0d0f;
-    overflow: auto;
-    height: 81vh;
 
     &::-webkit-scrollbar {
         width: 5px;
@@ -23,7 +24,6 @@ const Component = styled(Box)`
         border-radius: 10px;
     }
 `;
-
 
 const StyledDivider = styled(Divider)`
     margin-left: 70px;
