@@ -1,13 +1,23 @@
+import { createServer } from 'http';
 import { Server } from 'socket.io';
 
 const PORT = process.env.PORT || 9000;
 
-const io = new Server(PORT, {
+const httpServer = createServer((request, response) => {
+    response.writeHead(200, {
+        'Content-Type': 'text/plain'
+    });
+
+    response.end('Whisper Socket Server is running');
+});
+
+const io = new Server(httpServer, {
     cors: {
         origin: [
             'http://localhost:3000',
             'https://whisper-five-theta.vercel.app'
-        ]
+        ],
+        methods: ['GET', 'POST']
     }
 });
 
@@ -35,6 +45,9 @@ io.on('connection', (socket) => {
 
     socket.on('addUser', (userData) => {
         addUser(userData, socket.id);
+
+        console.log('Active users:', users.length);
+
         io.emit('getUsers', users);
     });
 
@@ -50,6 +63,11 @@ io.on('connection', (socket) => {
         console.log('User disconnected:', socket.id);
 
         removeUser(socket.id);
+
         io.emit('getUsers', users);
     });
+});
+
+httpServer.listen(PORT, '0.0.0.0', () => {
+    console.log(`Whisper Socket Server running on port ${PORT}`);
 });
