@@ -16,7 +16,7 @@ const AccountProvider = ({children}) => {
     const socket = useRef();
 
     useEffect(() => {
-        socket.current = io('https://whisper-lmg7.onrender.com');
+        socket.current = io('https://whisper-server-kqvy.onrender.com');
     }, [])
 
     return (
