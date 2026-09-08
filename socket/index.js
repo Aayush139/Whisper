@@ -1,17 +1,12 @@
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 
-const PORT = process.env.PORT || 9000;
+const PORT = process.env.PORT || 10000;
 
-const httpServer = createServer((request, response) => {
-    response.writeHead(200, {
-        'Content-Type': 'text/plain'
-    });
-
-    response.end('Whisper Socket Server is running');
-});
+const httpServer = createServer();
 
 const io = new Server(httpServer, {
+    path: '/socket.io',
     cors: {
         origin: [
             'http://localhost:3000',
