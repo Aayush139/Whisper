@@ -1,16 +1,25 @@
 import { Server } from 'socket.io';
 
-const io = new Server(9000, {
+const PORT = process.env.PORT || 9000;
+
+const io = new Server(PORT, {
     cors: {
-        origin: 'http://localhost:3000',
-    },
+        origin: [
+            'http://localhost:3000',
+            'https://whisper-five-theta.vercel.app'
+        ]
+    }
 });
 
 let users = [];
 
 const addUser = (userData, socketId) => {
-    !users.some(user => user.sub === userData.sub) &&
-        users.push({ ...userData, socketId });
+    if (!users.some(user => user.sub === userData.sub)) {
+        users.push({
+            ...userData,
+            socketId
+        });
+    }
 };
 
 const removeUser = (socketId) => {
@@ -22,15 +31,13 @@ const getUser = (userId) => {
 };
 
 io.on('connection', (socket) => {
-    console.log('user connected');
+    console.log('User connected:', socket.id);
 
-    // connect
-    socket.on('addUser', userData => {
+    socket.on('addUser', (userData) => {
         addUser(userData, socket.id);
         io.emit('getUsers', users);
     });
 
-    // send message
     socket.on('sendMessage', (data) => {
         const user = getUser(data.receiverId);
 
@@ -39,9 +46,9 @@ io.on('connection', (socket) => {
         }
     });
 
-    // disconnect
     socket.on('disconnect', () => {
-        console.log('user disconnected');
+        console.log('User disconnected:', socket.id);
+
         removeUser(socket.id);
         io.emit('getUsers', users);
     });
