@@ -132,7 +132,7 @@ const Conversation = ({ user }) => {
                 </Container>
 
                 <Text>
-                    {message?.text?.includes('localhost')
+                    {message?.text?.includes('/file/')
                         ? 'Media'
                         : message?.text || 'Start a conversation'}
                 </Text>

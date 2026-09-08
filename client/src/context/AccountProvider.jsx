@@ -3,26 +3,44 @@ import { io } from 'socket.io-client';
 
 export const AccountContext = createContext(null);
 
-const AccountProvider = ({children}) => {
+const AccountProvider = ({ children }) => {
 
-    const [ account, setAccount ] = useState();
+    const [account, setAccount] = useState();
     const [showloginButton, setShowloginButton] = useState(true);
     const [showlogoutButton, setShowlogoutButton] = useState(false);
 
     const [activeUsers, setActiveUsers] = useState([]);
-    
+
     const [newMessageFlag, setNewMessageFlag] = useState(false);
 
     const socket = useRef();
 
     useEffect(() => {
+
         socket.current = io('https://whisper-server-kqvy.onrender.com');
-    }, [])
+
+        socket.current.on('getUsers', users => {
+            setActiveUsers(users);
+        });
+
+        return () => {
+            socket.current.disconnect();
+        };
+
+    }, []);
+
+    useEffect(() => {
+
+        if (account?.sub && socket.current) {
+            socket.current.emit('addUser', account);
+        }
+
+    }, [account]);
 
     return (
-        <AccountContext.Provider value={{ 
-            account, 
-            setAccount, 
+        <AccountContext.Provider value={{
+            account,
+            setAccount,
             showloginButton,
             setShowloginButton,
             showlogoutButton,
@@ -35,7 +53,7 @@ const AccountProvider = ({children}) => {
         }}>
             {children}
         </AccountContext.Provider>
-    )
-}
+    );
+};
 
 export default AccountProvider;
