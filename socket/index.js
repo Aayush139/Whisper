@@ -5,6 +5,10 @@ const PORT = process.env.PORT || 10000;
 
 const httpServer = createServer();
 
+httpServer.on('request', (request) => {
+    console.log('HTTP request received:', request.url);
+});
+
 const io = new Server(httpServer, {
     path: '/socket.io',
     cors: {
