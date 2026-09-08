@@ -63,6 +63,8 @@ const Header = () => {
 
     const { account } = useContext(AccountContext);
 
+    console.log('WHISPER ACCOUNT:', account);
+
     const toggleDrawer = () => {
         setOpenDrawer(true);
     };
