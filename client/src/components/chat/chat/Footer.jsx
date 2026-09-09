@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
 
 import { EmojiEmotions, AttachFile, Mic } from '@mui/icons-material';
 import { Box, styled, InputBase } from '@mui/material';
@@ -6,6 +6,7 @@ import { Box, styled, InputBase } from '@mui/material';
 import EmojiPicker from 'emoji-picker-react';
 
 import { uploadFile } from '../../../service/api';
+import { AccountContext } from '../../../context/AccountProvider';
 
 
 const Container = styled(Box)`
@@ -66,9 +67,20 @@ const Picker = styled(Box)`
 `;
 
 
-const Footer = ({ sendText, value, setValue, setFile, file, setImage }) => {
+const Footer = ({
+    sendText,
+    value,
+    setValue,
+    setFile,
+    file,
+    setImage,
+    person
+}) => {
 
     const [showEmoji, setShowEmoji] = useState(false);
+
+    const { socket, account } = useContext(AccountContext);
+
 
     useEffect(() => {
 
@@ -89,7 +101,7 @@ const Footer = ({ sendText, value, setValue, setFile, file, setImage }) => {
 
         getImage();
 
-    }, [file]);
+    }, [file, setImage]);
 
 
     const onFileChange = (e) => {
@@ -105,6 +117,52 @@ const Footer = ({ sendText, value, setValue, setFile, file, setImage }) => {
 
     const addEmoji = (emojiData) => {
         setValue(prev => prev + emojiData.emoji);
+    };
+
+
+    const handleTyping = (e) => {
+
+        const newValue = e.target.value;
+
+        setValue(newValue);
+
+        if (!socket.current || !account?.sub || !person?.sub) {
+            return;
+        }
+
+        if (newValue.length > 0) {
+
+            socket.current.emit('typing', {
+                senderId: account.sub,
+                receiverId: person.sub
+            });
+
+        } else {
+
+            socket.current.emit('stopTyping', {
+                senderId: account.sub,
+                receiverId: person.sub
+            });
+
+        }
+    };
+
+
+    const handleKeyPress = (e) => {
+
+        if (e.key === 'Enter') {
+
+            if (socket.current && account?.sub && person?.sub) {
+
+                socket.current.emit('stopTyping', {
+                    senderId: account.sub,
+                    receiverId: person.sub
+                });
+
+            }
+
+            sendText(e);
+        }
     };
 
 
@@ -134,12 +192,14 @@ const Footer = ({ sendText, value, setValue, setFile, file, setImage }) => {
             />
 
             <Search>
+
                 <InputField
                     placeholder="Type a message"
-                    onChange={(e) => setValue(e.target.value)}
-                    onKeyPress={sendText}
+                    onChange={handleTyping}
+                    onKeyPress={handleKeyPress}
                     value={value}
                 />
+
             </Search>
 
             <Mic />

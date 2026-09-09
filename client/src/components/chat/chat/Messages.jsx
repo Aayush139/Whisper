@@ -134,6 +134,7 @@ const Messages = ({ person, conversation }) => {
                 setFile={setFile}
                 file={file}
                 setImage={setImage}
+                person={person}
             />
         </Wrapper>
     );

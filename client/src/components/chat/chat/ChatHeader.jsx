@@ -1,4 +1,4 @@
-import { useContext } from 'react';
+import { useContext, useEffect, useState } from 'react';
 
 import { Box, Typography, styled } from '@mui/material';
 import { Search, MoreVert } from '@mui/icons-material';
@@ -63,11 +63,54 @@ const ChatHeader = ({ person }) => {
 
     const url = person.picture || defaultProfilePicture;
 
-    const { activeUsers } = useContext(AccountContext);
+    const { activeUsers, socket } = useContext(AccountContext);
+
+    const [isTyping, setIsTyping] = useState(false);
+
 
     const online = activeUsers?.find(
         user => user.sub === person.sub
     );
+
+
+    useEffect(() => {
+
+        if (!socket.current) return;
+
+
+        const handleTyping = (data) => {
+
+            if (data.senderId === person.sub) {
+                setIsTyping(true);
+            }
+
+        };
+
+
+        const handleStopTyping = (data) => {
+
+            if (data.senderId === person.sub) {
+                setIsTyping(false);
+            }
+
+        };
+
+
+        socket.current.on('typing', handleTyping);
+
+        socket.current.on('stopTyping', handleStopTyping);
+
+
+        return () => {
+
+            socket.current.off('typing', handleTyping);
+
+            socket.current.off('stopTyping', handleStopTyping);
+
+        };
+
+    }, [socket, person.sub]);
+
 
     return (
         <Header>
@@ -78,11 +121,20 @@ const ChatHeader = ({ person }) => {
             />
 
             <Box>
-                <Name>{person.name}</Name>
+
+                <Name>
+                    {person.name}
+                </Name>
 
                 <Status>
-                    {online ? '● Online' : '○ Offline'}
+                    {isTyping
+                        ? `${person.name} is typing...`
+                        : online
+                            ? '● Online'
+                            : '○ Offline'
+                    }
                 </Status>
+
             </Box>
 
             <RightContainer>
