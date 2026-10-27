@@ -7,7 +7,7 @@ import Profile from './Profile';
 
 const Header = styled(Box)`
     height: 70px;
-    background: #0d0d0f;
+    background: #0d0d0f !important;
     color: #f5f5f5;
 
     display: flex;
