@@ -1,6 +1,15 @@
 
 import { Box, Typography, styled } from '@mui/material';
 import { useContext } from 'react';
+import {
+    PictureAsPdf,
+    Description,
+    TableChart,
+    Slideshow,
+    TextSnippet,
+    Download,
+    OpenInNew
+} from '@mui/icons-material';
 
 import { AccountContext } from '../../../context/AccountProvider';
 
@@ -78,10 +87,100 @@ const MessageImage = styled('img')`
     }
 `;
 
+const FileCard = styled(Box)`
+    width: min(290px, 100%);
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+`;
+
+const FileInfo = styled(Box)`
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+`;
+
+const FileName = styled(Typography)`
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+`;
+
+const FileSubtitle = styled(Typography)`
+    font-size: 11px !important;
+    color: #b7c0ca;
+    margin-top: 3px !important;
+`;
+
+const FileActions = styled(Box)`
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+`;
+
+const FileAction = styled('a')`
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 7px 10px;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #f5f7fa;
+    font-size: 12px;
+    text-decoration: none;
+    cursor: pointer;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.15);
+    }
+
+    & svg {
+        font-size: 16px;
+    }
+`;
+
+const getExtension = (name) => {
+    const parts = name.split('.');
+    return parts.length > 1 ? parts.pop().toLowerCase() : '';
+};
+
+const getFileName = (url) => {
+    try {
+        const pathname = new URL(url).pathname;
+        return decodeURIComponent(pathname.split('/').pop() || '') || 'Attachment';
+    } catch {
+        return 'Attachment';
+    }
+};
+
+const getFileDetails = (extension) => {
+    if (extension === 'pdf') {
+        return { label: 'PDF document', Icon: PictureAsPdf, color: '#ff777f' };
+    }
+
+    if (['doc', 'docx'].includes(extension)) {
+        return { label: 'Word document', Icon: Description, color: '#78aaff' };
+    }
+
+    if (['xls', 'xlsx'].includes(extension)) {
+        return { label: 'Excel spreadsheet', Icon: TableChart, color: '#69d5a0' };
+    }
+
+    if (['ppt', 'pptx'].includes(extension)) {
+        return { label: 'PowerPoint presentation', Icon: Slideshow, color: '#ffad75' };
+    }
+
+    return { label: 'Text document', Icon: TextSnippet, color: '#c4a7ff' };
+};
+
 const Message = ({ message }) => {
     const { account } = useContext(AccountContext);
 
-    const isOwn = message.senderId === account.sub;
+    const isOwn = message.senderId === account?.sub;
     const Wrapper = isOwn ? Own : Other;
 
     const time = message.createdAt
@@ -91,17 +190,69 @@ const Message = ({ message }) => {
           })
         : '';
 
+    const text =
+        typeof message.text === 'string' ? message.text.trim() : '';
+
+    const isFile = message.type === 'file';
+    const isHttpUrl = /^https?:\/\//i.test(text);
+    const fileName = isHttpUrl ? getFileName(text) : text;
+    const extension = getExtension(fileName);
+
     const isImage =
-        message.type === 'file' &&
-        typeof message.text === 'string' &&
-        /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(message.text);
+        isFile &&
+        isHttpUrl &&
+        ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension);
+
+    const isDocument =
+        isFile &&
+        isHttpUrl &&
+        ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'].includes(extension);
+
+    const details = getFileDetails(extension);
+    const DocumentIcon = details.Icon;
 
     return (
         <Wrapper>
             {isImage ? (
-                <a href={message.text} target="_blank" rel="noreferrer">
-                    <MessageImage src={message.text} alt="Shared image" />
+                <a href={text} target="_blank" rel="noreferrer">
+                    <MessageImage src={text} alt="Shared image" />
                 </a>
+            ) : isDocument ? (
+                <FileCard>
+                    <FileInfo>
+                        <DocumentIcon
+                            sx={{
+                                color: details.color,
+                                fontSize: 38,
+                                flexShrink: 0
+                            }}
+                        />
+
+                        <Box sx={{ minWidth: 0 }}>
+                            <FileName>{fileName}</FileName>
+                            <FileSubtitle>{details.label}</FileSubtitle>
+                        </Box>
+                    </FileInfo>
+
+                    <FileActions>
+                        <FileAction
+                            href={text}
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            <OpenInNew />
+                            Open
+                        </FileAction>
+
+                        <FileAction
+                            href={text}
+                            download={fileName}
+                        >
+                            <Download />
+                            Download
+                        </FileAction>
+                    </FileActions>
+                </FileCard>
             ) : (
                 <MessageText>{message.text}</MessageText>
             )}

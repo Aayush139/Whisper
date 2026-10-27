@@ -124,7 +124,7 @@ const Footer = ({
     const { socket, account } = useContext(AccountContext);
 
     useEffect(() => {
-        const getImage = async () => {
+        const uploadSelectedFile = async () => {
             if (!file) return;
 
             try {
@@ -136,19 +136,60 @@ const Footer = ({
                 setImage(response.data);
             } catch (error) {
                 console.error('File upload failed:', error);
+                alert('File upload failed. Please try again.');
+                setFile(null);
             }
         };
 
-        getImage();
-    }, [file, setImage]);
+        uploadSelectedFile();
+    }, [file, setImage, setFile]);
 
     const onFileChange = (e) => {
-        const selectedFile = e.target.files[0];
+        const selectedFile = e.target.files?.[0];
 
         if (!selectedFile) return;
 
+        const allowedExtensions = [
+            'pdf',
+            'doc',
+            'docx',
+            'xls',
+            'xlsx',
+            'ppt',
+            'pptx',
+            'txt',
+            'jpg',
+            'jpeg',
+            'png',
+            'gif',
+            'webp'
+        ];
+
+        const extension = selectedFile.name
+            .split('.')
+            .pop()
+            .toLowerCase();
+
+        if (!allowedExtensions.includes(extension)) {
+            alert(
+                'Unsupported file type. Select a PDF, Office document, text file, or supported image.'
+            );
+            e.target.value = '';
+            return;
+        }
+
+        const maxSize = 10 * 1024 * 1024; // 10 MB
+
+        if (selectedFile.size > maxSize) {
+            alert('File size must be 10 MB or less.');
+            e.target.value = '';
+            return;
+        }
+
         setValue(selectedFile.name);
         setFile(selectedFile);
+
+        // Allow selecting the same file again.
         e.target.value = '';
     };
 
@@ -209,12 +250,14 @@ const Footer = ({
 
             <IconButton
                 component="label"
-                aria-label="Attach file"
+                aria-label="Attach document or image"
             >
                 <ClipIcon />
+
                 <input
                     type="file"
                     hidden
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif,.webp"
                     onChange={onFileChange}
                 />
             </IconButton>
