@@ -1,118 +1,114 @@
-import { useContext } from 'react';
 
-import { Box, styled, Typography } from '@mui/material';
-import { GetApp as GetAppIcon } from '@mui/icons-material';
+import { Box, Typography, styled } from '@mui/material';
+import { useContext } from 'react';
 
 import { AccountContext } from '../../../context/AccountProvider';
 
-import { downloadMedia, formatDate } from '../../../utils/common-utils';
-import { iconPDF } from '../../../constants/data';
-
-
-const Wrapper = styled(Box)`
-    background: #171719;
-    border: 1px solid #29292c;
-    padding: 6px 8px;
-    max-width: 60%;
-    width: fit-content;
-    display: flex;
-    border-radius: 10px;
-    word-break: break-word;
-`;
-
-
 const Own = styled(Box)`
-    background: #421b20;
-    border: 1px solid #682b32;
-    padding: 6px 8px;
-    max-width: 60%;
+    background: #182b40;
+    color: #f5f7fa;
+    border-radius: 12px 12px 2px 12px;
+    padding: 8px 12px;
+    max-width: 65%;
     width: fit-content;
     margin-left: auto;
-    display: flex;
-    border-radius: 10px;
+    margin-right: 8px;
+    margin-bottom: 6px;
+    overflow-wrap: anywhere;
     word-break: break-word;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+
+    @media (max-width: 600px) {
+        max-width: 82%;
+        padding: 7px 10px;
+    }
 `;
 
+const Other = styled(Box)`
+    background: #202024;
+    color: #f5f5f5;
+    border: 1px solid #342126;
+    border-radius: 12px 12px 12px 2px;
+    padding: 8px 12px;
+    max-width: 65%;
+    width: fit-content;
+    margin-left: 8px;
+    margin-bottom: 6px;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 
-const Text = styled(Typography)`
-    font-size: 14px;
-    padding: 0 25px 0 5px;
-    color: #f1f1f1;
+    @media (max-width: 600px) {
+        max-width: 82%;
+        padding: 7px 10px;
+    }
 `;
 
+const MessageText = styled(Typography)`
+    font-size: 14px !important;
+    line-height: 1.45 !important;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+
+    @media (max-width: 600px) {
+        font-size: 13px !important;
+    }
+`;
 
 const Time = styled(Typography)`
-    font-size: 10px;
-    color: #999;
-    margin-top: auto;
-    white-space: nowrap;
+    color: #aaa;
+    font-size: 10px !important;
+    text-align: right;
+    margin-top: 4px !important;
 `;
 
+const MessageImage = styled('img')`
+    display: block;
+    max-width: 100%;
+    width: auto;
+    height: auto;
+    max-height: 320px;
+    object-fit: contain;
+    border-radius: 8px;
+    margin-bottom: 5px;
+
+    @media (max-width: 600px) {
+        max-height: 220px;
+    }
+`;
 
 const Message = ({ message }) => {
-
     const { account } = useContext(AccountContext);
 
-    const Content = message.type === 'file'
-        ? <ImageMessage message={message} />
-        : <TextMessage message={message} />;
+    const isOwn = message.senderId === account.sub;
+    const Wrapper = isOwn ? Own : Other;
 
-    return account.sub === message.senderId
-        ? <Own>{Content}</Own>
-        : <Wrapper>{Content}</Wrapper>;
+    const time = message.createdAt
+        ? new Date(message.createdAt).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit'
+          })
+        : '';
+
+    const isImage =
+        message.type === 'file' &&
+        typeof message.text === 'string' &&
+        /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(message.text);
+
+    return (
+        <Wrapper>
+            {isImage ? (
+                <a href={message.text} target="_blank" rel="noreferrer">
+                    <MessageImage src={message.text} alt="Shared image" />
+                </a>
+            ) : (
+                <MessageText>{message.text}</MessageText>
+            )}
+
+            {time && <Time>{time}</Time>}
+        </Wrapper>
+    );
 };
-
-
-const TextMessage = ({ message }) => (
-    <>
-        <Text>{message.text}</Text>
-        <Time>{formatDate(message.createdAt)}</Time>
-    </>
-);
-
-
-const ImageMessage = ({ message }) => (
-    <Box position="relative">
-
-        {message?.text?.includes('.pdf') ? (
-            <Box display="flex">
-                <img src={iconPDF} alt="pdf" style={{ width: 60 }} />
-                <Typography color="#eee" fontSize={14}>
-                    {message.text.split('/').pop()}
-                </Typography>
-            </Box>
-        ) : (
-            <img
-                src={message.text}
-                alt="media"
-                style={{
-                    width: 300,
-                    height: '100%',
-                    objectFit: 'cover'
-                }}
-            />
-        )}
-
-        <Time style={{
-            position: 'absolute',
-            bottom: 0,
-            right: 0
-        }}>
-            <GetAppIcon
-                onClick={(e) => downloadMedia(e, message.text)}
-                fontSize="small"
-                style={{
-                    marginRight: 8,
-                    border: '1px solid #777',
-                    borderRadius: '50%',
-                    cursor: 'pointer'
-                }}
-            />
-            {formatDate(message.createdAt)}
-        </Time>
-
-    </Box>
-);
-
 
 export default Message;

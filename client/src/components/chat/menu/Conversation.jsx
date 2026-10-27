@@ -9,14 +9,19 @@ import { setConversation, getConversation } from '../../../service/api';
 import { emptyProfilePicture } from '../../../constants/data';
 import { formatDate } from '../../../utils/common-utils';
 
-
 const Component = styled(Box)`
-    height: 45px;
+    width: 100%;
+    min-height: 76px;
     display: flex;
-    padding: 13px 0;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    box-sizing: border-box;
     cursor: pointer;
     background: #0d0d0f;
-    transition: .2s;
+    border-bottom: 1px solid #241719;
+    transition: background 0.2s ease;
+    overflow: hidden;
 
     &:hover {
         background: #181012;
@@ -24,47 +29,77 @@ const Component = styled(Box)`
     }
 `;
 
-
-const Image = styled('img')`
-    width: 50px;
-    height: 50px;
-    object-fit: cover;
-    border-radius: 50%;
-    padding: 0 14px;
-`;
-
-
-const Container = styled(Box)`
+const AvatarWrapper = styled(Box)`
+    flex: 0 0 48px;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
     display: flex;
     align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 50%;
 `;
 
+const Image = styled('img')`
+    display: block;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    max-width: 48px;
+    flex-shrink: 0;
+    object-fit: cover;
+    object-position: center;
+    border-radius: 50%;
+    padding: 0;
+    margin: 0;
+`;
+
+const Content = styled(Box)`
+    flex: 1 1 auto;
+    width: 0;
+    min-width: 0;
+    overflow: hidden;
+`;
+
+const Container = styled(Box)`
+    width: 100%;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+`;
 
 const Name = styled(Typography)`
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     color: #eeeeee;
     font-size: 15px;
     font-weight: 500;
 `;
 
-
 const Timestamp = styled(Typography)`
+    flex-shrink: 0;
     font-size: 11px;
-    margin-left: auto;
     color: #77777d;
-    margin-right: 15px;
+    white-space: nowrap;
 `;
-
 
 const Text = styled(Typography)`
     display: block;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     color: #88888f;
     font-size: 13px;
-    margin-top: 3px;
+    margin-top: 4px;
 `;
 
-
 const Conversation = ({ user }) => {
-
     const url = user.picture || emptyProfilePicture;
 
     const { setPerson } = useContext(UserContext);
@@ -72,63 +107,64 @@ const Conversation = ({ user }) => {
 
     const [message, setMessage] = useState({});
 
-
     useEffect(() => {
+        let cancelled = false;
 
         const getConversationMessage = async () => {
+            if (!account?.sub || !user?.sub) return;
 
-            const data = await getConversation({
-                senderId: account.sub,
-                receiverId: user.sub
-            });
+            try {
+                const data = await getConversation({
+                    senderId: account.sub,
+                    receiverId: user.sub
+                });
 
-            setMessage({
-                text: data?.message,
-                timestamp: data?.updatedAt
-            });
+                if (!cancelled) {
+                    setMessage({
+                        text: data?.message,
+                        timestamp: data?.updatedAt
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to load conversation preview:', error);
+            }
         };
 
         getConversationMessage();
 
-    }, [newMessageFlag]);
-
+        return () => {
+            cancelled = true;
+        };
+    }, [account?.sub, user?.sub, newMessageFlag]);
 
     const getUser = async () => {
-
         setPerson(user);
 
-        await setConversation({
-            senderId: account.sub,
-            receiverId: user.sub
-        });
-
+        try {
+            await setConversation({
+                senderId: account.sub,
+                receiverId: user.sub
+            });
+        } catch (error) {
+            console.error('Failed to set conversation:', error);
+        }
     };
-
 
     return (
         <Component onClick={getUser}>
+            <AvatarWrapper>
+                <Image src={url} alt={`${user.name || 'User'} profile`} />
+            </AvatarWrapper>
 
-            <Box>
-                <Image
-                    src={url}
-                    alt="display picture"
-                />
-            </Box>
-
-            <Box style={{ width: '100%' }}>
-
+            <Content>
                 <Container>
-
-                    <Name>
-                        {user.name}
-                    </Name>
+                    <Name title={user.name}>{user.name}</Name>
 
                     {message?.text && (
                         <Timestamp>
                             {formatDate(message.timestamp)}
                         </Timestamp>
                     )}
-
                 </Container>
 
                 <Text>
@@ -136,12 +172,9 @@ const Conversation = ({ user }) => {
                         ? 'Media'
                         : message?.text || 'Start a conversation'}
                 </Text>
-
-            </Box>
-
+            </Content>
         </Component>
     );
 };
-
 
 export default Conversation;

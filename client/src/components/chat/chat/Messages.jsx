@@ -1,39 +1,46 @@
+
 import { useState, useEffect, useContext, useRef } from 'react';
-
 import { Box, styled } from '@mui/material';
-
 import { getMessages, newMessages } from '../../../service/api';
 import { AccountContext } from '../../../context/AccountProvider';
-
 import Message from './Message';
 import Footer from './Footer';
 
 const Wrapper = styled(Box)`
     flex: 1;
+    min-width: 0;
     min-height: 0;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
     background: #080808;
 `;
 
 const Component = styled(Box)`
     flex: 1;
+    min-width: 0;
     min-height: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     background: #080808;
-
-    &::-webkit-scrollbar {
-        width: 5px;
-    }
-
-    &::-webkit-scrollbar-thumb {
-        background: #5b252c;
-        border-radius: 10px;
-    }
 `;
 
 const Container = styled(Box)`
-    padding: 1px 80px;
+    padding: 4px 80px;
+    min-width: 0;
+    box-sizing: border-box;
+
+    @media (max-width: 900px) {
+        padding: 4px 24px;
+    }
+
+    @media (max-width: 700px) {
+        padding: 4px 12px;
+    }
+
+    @media (max-width: 380px) {
+        padding: 3px 8px;
+    }
 `;
 
 const Messages = ({ person, conversation }) => {
@@ -42,76 +49,93 @@ const Messages = ({ person, conversation }) => {
     const [value, setValue] = useState('');
     const [file, setFile] = useState();
     const [image, setImage] = useState();
+    const scrollRef = useRef(null);
 
-    const scrollRef = useRef();
-
-    const {
-        account,
-        socket,
-        newMessageFlag,
-        setNewMessageFlag
-    } = useContext(AccountContext);
+    const { account, socket, newMessageFlag, setNewMessageFlag } =
+        useContext(AccountContext);
 
     useEffect(() => {
-        socket.current.on('getMessage', data => {
-            setIncomingMessage({
-                ...data,
-                createdAt: Date.now()
-            });
+        const currentSocket = socket.current;
+        if (!currentSocket) return;
+
+        const handleMessage = data => setIncomingMessage({
+            ...data, createdAt: Date.now()
         });
 
-        return () => {
-            socket.current.off('getMessage');
-        };
-    }, []);
+        currentSocket.on('getMessage', handleMessage);
+        return () => currentSocket.off('getMessage', handleMessage);
+    }, [socket]);
 
     useEffect(() => {
+        let cancelled = false;
+
         const loadMessages = async () => {
-            const data = await getMessages(conversation?._id);
-            setMessages(data);
+            if (!conversation?._id) {
+                setMessages([]);
+                return;
+            }
+
+            try {
+                const data = await getMessages(conversation._id);
+                if (!cancelled) setMessages(Array.isArray(data) ? data : []);
+            } catch (error) {
+                console.error('Failed to load messages:', error);
+            }
         };
 
         loadMessages();
-    }, [conversation?._id, person._id, newMessageFlag]);
+        return () => { cancelled = true; };
+    }, [conversation?._id, person?._id, newMessageFlag]);
 
     useEffect(() => {
         scrollRef.current?.scrollIntoView({
-            behavior: 'smooth'
+            behavior: 'smooth', block: 'end'
         });
     }, [messages]);
 
     useEffect(() => {
-        if (
-            incomingMessage &&
-            conversation?.members?.includes(incomingMessage.senderId)
-        ) {
-            setMessages(prev => [...prev, incomingMessage]);
+        if (!incomingMessage || !conversation?.members) return;
+
+        const belongs = conversation.members.includes(incomingMessage.senderId) &&
+            conversation.members.includes(incomingMessage.receiverId);
+
+        if (belongs) {
+            setMessages(prev => {
+                if (incomingMessage._id &&
+                    prev.some(msg => msg._id === incomingMessage._id)) return prev;
+                return [...prev, incomingMessage];
+            });
         }
     }, [incomingMessage, conversation]);
 
-    const sendText = async (e) => {
-        if ((e.keyCode || e.which) !== 13 || !value) return;
+    const sendText = async e => {
+        if ((e.keyCode || e.which) !== 13 || e.shiftKey) return;
+        e.preventDefault();
 
-        const receiverId = conversation?.members?.find(
-            member => member !== account.sub
-        );
+        const text = value.trim();
+        if ((!text && !file) || !account?.sub || !conversation?._id) return;
+
+        const receiverId = conversation.members?.find(id => id !== account.sub);
+        if (!receiverId) return;
 
         const message = {
             senderId: account.sub,
             receiverId,
             conversationId: conversation._id,
             type: file ? 'file' : 'text',
-            text: file ? image : value
+            text: file ? image : text
         };
 
-        socket.current.emit('sendMessage', message);
-
-        await newMessages(message);
-
-        setValue('');
-        setFile();
-        setImage('');
-        setNewMessageFlag(prev => !prev);
+        try {
+            await newMessages(message);
+            socket.current?.emit('sendMessage', message);
+            setValue('');
+            setFile(undefined);
+            setImage('');
+            setNewMessageFlag(prev => !prev);
+        } catch (error) {
+            console.error('Failed to send message:', error);
+        }
     };
 
     return (

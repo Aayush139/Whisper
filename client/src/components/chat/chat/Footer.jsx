@@ -1,71 +1,114 @@
+
 import { useEffect, useState, useContext } from 'react';
 
-import { EmojiEmotions, AttachFile, Mic } from '@mui/icons-material';
-import { Box, styled, InputBase } from '@mui/material';
+import {
+    EmojiEmotions,
+    AttachFile,
+    Mic
+} from '@mui/icons-material';
 
+import { Box, styled, InputBase } from '@mui/material';
 import EmojiPicker from 'emoji-picker-react';
 
 import { uploadFile } from '../../../service/api';
 import { AccountContext } from '../../../context/AccountProvider';
 
-
 const Container = styled(Box)`
-    height: 55px;
+    min-height: 60px;
     flex-shrink: 0;
     background: #171719;
     width: 100%;
     display: flex;
     align-items: center;
-    padding: 0 15px;
+    gap: 8px;
+    padding: 8px 12px;
     box-sizing: border-box;
     position: relative;
+    border-top: 1px solid #302022;
 
-    & > * {
-        margin: 5px;
-        color: #999;
+    @media (max-width: 600px) {
+        min-height: 56px;
+        gap: 6px;
+        padding: 6px 8px;
     }
 `;
 
 const Search = styled(Box)`
     flex: 1;
-    border-radius: 20px;
+    min-width: 0;
+    border-radius: 22px;
     background: #242426;
     border: 1px solid #302022;
 `;
 
 const InputField = styled(InputBase)`
     width: 100%;
-    padding: 10px 18px;
+    padding: 9px 14px;
     font-size: 14px;
     box-sizing: border-box;
     color: #eee;
+
+    & input {
+        min-width: 0;
+    }
 
     & input::placeholder {
         color: #777;
         opacity: 1;
     }
+
+    @media (max-width: 600px) {
+        padding: 8px 10px;
+        font-size: 13px;
+    }
 `;
 
-const ClipIcon = styled(AttachFile)`
-    transform: rotate(40deg);
-    cursor: pointer;
-`;
-
-const EmojiButton = styled(EmojiEmotions)`
+const IconButton = styled(Box)`
+    width: 32px;
+    height: 36px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
     cursor: pointer;
 
     &:hover {
         color: #df626b;
     }
+
+    & svg {
+        font-size: 23px;
+    }
+
+    @media (max-width: 600px) {
+        width: 27px;
+
+        & svg {
+            font-size: 21px;
+        }
+    }
+`;
+
+const ClipIcon = styled(AttachFile)`
+    transform: rotate(40deg);
 `;
 
 const Picker = styled(Box)`
     position: absolute;
-    bottom: 60px;
-    left: 10px;
-    z-index: 10;
-`;
+    bottom: calc(100% + 8px);
+    left: 8px;
+    z-index: 20;
+    max-width: calc(100vw - 16px);
 
+    @media (max-width: 600px) {
+        left: 4px;
+
+        & > aside {
+            max-width: calc(100vw - 16px) !important;
+        }
+    }
+`;
 
 const Footer = ({
     sendText,
@@ -76,137 +119,123 @@ const Footer = ({
     setImage,
     person
 }) => {
-
     const [showEmoji, setShowEmoji] = useState(false);
 
     const { socket, account } = useContext(AccountContext);
 
-
     useEffect(() => {
-
         const getImage = async () => {
+            if (!file) return;
 
-            if (file) {
-
+            try {
                 const data = new FormData();
-
                 data.append('name', file.name);
                 data.append('file', file);
 
                 const response = await uploadFile(data);
-
                 setImage(response.data);
+            } catch (error) {
+                console.error('File upload failed:', error);
             }
         };
 
         getImage();
-
     }, [file, setImage]);
 
-
     const onFileChange = (e) => {
-
         const selectedFile = e.target.files[0];
 
         if (!selectedFile) return;
 
         setValue(selectedFile.name);
         setFile(selectedFile);
+        e.target.value = '';
     };
-
 
     const addEmoji = (emojiData) => {
         setValue(prev => prev + emojiData.emoji);
     };
 
-
     const handleTyping = (e) => {
-
         const newValue = e.target.value;
-
         setValue(newValue);
 
         if (!socket.current || !account?.sub || !person?.sub) {
             return;
         }
 
-        if (newValue.length > 0) {
-
-            socket.current.emit('typing', {
+        socket.current.emit(
+            newValue.length > 0 ? 'typing' : 'stopTyping',
+            {
                 senderId: account.sub,
                 receiverId: person.sub
-            });
+            }
+        );
+    };
 
-        } else {
+    const handleKeyPress = (e) => {
+        if (e.key !== 'Enter' || e.shiftKey) return;
 
+        e.preventDefault();
+
+        if (socket.current && account?.sub && person?.sub) {
             socket.current.emit('stopTyping', {
                 senderId: account.sub,
                 receiverId: person.sub
             });
-
         }
+
+        sendText(e);
     };
-
-
-    const handleKeyPress = (e) => {
-
-        if (e.key === 'Enter') {
-
-            if (socket.current && account?.sub && person?.sub) {
-
-                socket.current.emit('stopTyping', {
-                    senderId: account.sub,
-                    receiverId: person.sub
-                });
-
-            }
-
-            sendText(e);
-        }
-    };
-
 
     return (
         <Container>
-
-            <EmojiButton onClick={() => setShowEmoji(!showEmoji)} />
+            <IconButton
+                onClick={() => setShowEmoji(prev => !prev)}
+                aria-label="Toggle emoji picker"
+            >
+                <EmojiEmotions />
+            </IconButton>
 
             {showEmoji && (
                 <Picker>
                     <EmojiPicker
                         onEmojiClick={addEmoji}
                         theme="dark"
+                        width="min(320px, calc(100vw - 16px))"
                     />
                 </Picker>
             )}
 
-            <label htmlFor="fileInput">
+            <IconButton
+                component="label"
+                aria-label="Attach file"
+            >
                 <ClipIcon />
-            </label>
-
-            <input
-                type="file"
-                id="fileInput"
-                style={{ display: 'none' }}
-                onChange={onFileChange}
-            />
+                <input
+                    type="file"
+                    hidden
+                    onChange={onFileChange}
+                />
+            </IconButton>
 
             <Search>
-
                 <InputField
                     placeholder="Type a message"
                     onChange={handleTyping}
-                    onKeyPress={handleKeyPress}
+                    onKeyDown={handleKeyPress}
                     value={value}
+                    inputProps={{
+                        'aria-label': 'Type a message'
+                    }}
                 />
-
             </Search>
 
-            <Mic />
-
+            <IconButton aria-label="Voice message">
+                <Mic />
+            </IconButton>
         </Container>
     );
 };
-
 
 export default Footer;
